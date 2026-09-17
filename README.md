@@ -3,32 +3,31 @@
 A small read-only REST service in front of the legacy "Urja Meter Ops" portal. It logs into the portal for you, pulls the data through the portal's own JSON endpoints and signed bulk export, cleans it up, and serves it as a documented API with filtering, geo search, a network hierarchy and daily consumption aggregates.
 
 - `PROTOCOL.md`: how the portal works under the hood (auth, endpoints, signing, quirks).
-- `openapi.json`: OpenAPI 3.1 description of this API. Also served live at `/openapi.json`, with Swagger UI at `/docs` and Redoc at `/redoc`.
+- `openapi.json`: OpenAPI 3.0 description of this API. Also served live at `/openapi.json`, with Swagger UI at `/docs`.
 
 ## Structure
 
 ```
-app/portal.py     portal client: login, session refresh, 429 backoff, HMAC-signed export
-app/normalize.py  pure functions: readings cleanup, hierarchy repair, tree building, daily kWh
-app/main.py       FastAPI routes and the in-memory cache of the bulk export
-tests/            unit tests for the normalisation logic
+src/portal.ts     portal client: login, session refresh, 429 backoff, HMAC-signed export, zod-validated responses
+src/normalize.ts  pure functions: readings cleanup, hierarchy repair, tree building, daily kWh
+src/server.ts     Express routes and the in-memory cache of the bulk export
+test/             unit tests for the normalisation logic
+openapi.json      hand-maintained OpenAPI 3.0 spec, served at /openapi.json
 ```
 
-Python, FastAPI, httpx. No database: 403 meters fit in memory and the export gives them all in one request.
+TypeScript on Node 22.9+, Express, zod. Three source files, no build step (`tsx` runs the TypeScript directly). No database: 403 meters fit in memory and the export gives them all in one request.
 
 ## Run
 
 ```bash
-python3 -m venv .venv && . .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env            # defaults already point at the assignment portal
-set -a; . ./.env; set +a
-uvicorn app.main:app --port 8000
+npm install
+cp .env.example .env            # optional, defaults already point at the assignment portal
+npm start                       # http://localhost:8000
 ```
 
-First request triggers login plus the bulk export (about 2 seconds). Then open http://localhost:8000/docs.
+First request triggers login plus the bulk export (about 2 seconds). Then open http://localhost:8000/docs for Swagger UI.
 
-Tests: `python -m pytest`.
+Tests: `npm test`. Types: `npm run typecheck`.
 
 ## Sample requests
 
@@ -76,7 +75,7 @@ Example response, `GET /meters/J100089/consumption/daily?from=2026-06-28&to=2026
 | GET | `/hierarchy/issues` | every repair made to upstream hierarchy data |
 | GET | `/health`, POST `/refresh` | cache status, force re-pull |
 
-Errors are `{"error": "...", "message": "..."}` with 404 for unknown meters, 502 for upstream failures, 503 when the portal keeps rate-limiting.
+Errors are `{"error": "...", "message": "..."}` with 400 for bad query params, 404 for unknown meters, 502 for upstream failures, 503 when the portal keeps rate-limiting.
 
 ## Assumptions
 
@@ -90,9 +89,11 @@ Errors are `{"error": "...", "message": "..."}` with 404 for unknown meters, 502
 
 - **Bulk export over per-meter scraping.** One signed request replaces roughly 830 calls, avoids the two nameplate formats, and sidesteps the rate limit. Cost: the export must be re-signed and could change shape independently of the pages.
 - **In-memory cache with a TTL (default 15 min)** for meters, hierarchy and transformers. Readings are always fetched live because they are the only thing that changes often and are per-meter. If a refresh fails, the last good snapshot keeps serving. Consistency: meter attributes can be up to TTL stale; `/refresh` forces a pull.
-- **Filtering in Python over a list.** Fine to a few tens of thousands of meters. Beyond that, or once readings need cross-meter aggregation, I would load the export into SQLite (or Postgres with PostGIS for the geo query) and keep the same endpoints.
-- **No auth on this API.** It runs inside the network; adding an API key is a one-line dependency in FastAPI, deliberately left out.
-- **Retries and backoff** live in one place (`Portal.get`): re-login on 302/401, exponential sleep on 429, small retry on 5xx and connection errors, 404 mapped through.
+- **Filtering with `Array.filter` over the snapshot.** Fine to a few tens of thousands of meters. Beyond that, or once readings need cross-meter aggregation, I would load the export into SQLite (or Postgres with PostGIS for the geo query) and keep the same endpoints.
+- **No auth on this API.** It runs inside the network; adding an API key check is one small Express middleware, deliberately left out.
+- **Portal responses are validated with zod at the boundary.** If the portal changes shape, requests fail with a clear 502 instead of leaking `undefined` into responses. Inside the service the types are trusted.
+- **openapi.json is written by hand** rather than generated. With nine routes that is less machinery than a generator; the cost is that it can drift, so route changes must touch it.
+- **Retries and backoff** live in one place (`get` in `src/portal.ts`): re-login on 302/401, exponential sleep on 429, small retry on 5xx and connection errors, 404 mapped through.
 
 ## Intentionally skipped
 
@@ -111,10 +112,10 @@ Errors are `{"error": "...", "message": "..."}` with 404 for unknown meters, 502
 
 **Assumptions.** Listed above. The biggest one is that the export is an intended feature; it was, since the UI button uses it. The second is that hierarchy codes reused across parents is real (not a bug I should collapse), so I preserved it and documented it rather than guessing a canonical parent.
 
-**Hardest part.** The portal renders empty tables on the server, so curl alone showed nothing. Reading the hashed SvelteKit chunks revealed every fetch, including the export button's HMAC code, which I then reproduced in Python. The other sticking point was the rate limiter: an 8-way parallel sweep of energy endpoints got 431 429s. Measuring the window (120 requests per 20 s, 40 s cooldown) gave the backoff numbers.
+**Hardest part.** The portal renders empty tables on the server, so curl alone showed nothing. Reading the hashed SvelteKit chunks revealed every fetch, including the export button's HMAC code, which I then reproduced with `node:crypto`. The other sticking point was the rate limiter: an 8-way parallel sweep of energy endpoints got 431 429s. Measuring the window (120 requests per 20 s, 40 s cooldown) gave the backoff numbers.
 
 **Another day.** Readings sync plus a small web view with a map of meters coloured by status and a consumption chart per DT. That turns the API from "portal but JSON" into something an operator would prefer.
 
 **Mistake.** I started by fetching energy for every meter in parallel to profile data quality, tripped the rate limit hard, and had to wait it out and re-run. Should have checked limits with a small burst first. Also, I initially assumed the hierarchy was a clean tree and wrote a code-keyed tree before the profiling showed multi-parent codes.
 
-**Self-review.** The store refreshes inline on the first request after TTL, so one caller pays the export latency; a background refresh would be better. `list_meters` has a long parameter list that could be a Pydantic model. Tests cover normalisation only, not the HTTP client, which is where the portal-specific breakage would actually surface. And the daily consumption for a day with a single reading reports the delta from the previous day's close, which is right for daily meters but should be documented more loudly.
+**Self-review.** The snapshot refreshes inline on the first request after TTL, so one caller pays the export latency; a background refresh would be better. The hand-written `openapi.json` is not checked against the routes, so nothing stops it drifting. Tests cover normalisation only, not the HTTP client, which is where the portal-specific breakage would actually surface. And the daily consumption for a day with a single reading reports the delta from the previous day's close, which is right for daily meters but should be documented more loudly.

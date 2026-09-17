@@ -60,6 +60,6 @@ Roughly 120 requests per 20 seconds per session, then `429 {"error":"rate_limite
 
 ## For a maintainer
 
-- Everything portal-specific is in `app/portal.py`. If the portal changes, that is the file to touch.
-- If `/portal/keys` disappears or the signature scheme changes, `export_all` fails and the store keeps serving its last good snapshot; `/health` shows `cacheAgeSeconds`.
-- Session cookie is held in a single `httpx.Client`; login is serialised with a lock so concurrent 401s do not stampede.
+- Everything portal-specific is in `src/portal.ts`. If the portal changes, that is the file to touch.
+- If `/portal/keys` disappears or the signature scheme changes, `fetchExport` fails and the server keeps serving its last good snapshot; `/health` shows `cacheAgeSeconds`.
+- The session cookie is a module-level variable in `src/portal.ts`. It is cleared on a 302/401 and the next request logs in again.
