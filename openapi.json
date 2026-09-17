@@ -1,1 +1,1028 @@
-{"openapi":"3.1.0","info":{"title":"Urja Meter API","description":"Read-only API over the Urja Meter Ops portal: meters, network hierarchy, transformers and consumption readings. Meter data is served from a cached bulk export; readings are fetched live per meter.","version":"1.0.0"},"paths":{"/health":{"get":{"tags":["meta"],"summary":"Health","operationId":"health_health_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}}}}},"/refresh":{"post":{"tags":["meta"],"summary":"Force a re-pull of the bulk export","operationId":"refresh_refresh_post","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}}}}},"/meters":{"get":{"tags":["meters"],"summary":"List and filter meters","operationId":"list_meters_meters_get","parameters":[{"name":"q","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"description":"Substring match on meter ID or serial number","title":"Q"},"description":"Substring match on meter ID or serial number"},{"name":"make","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Make"}},{"name":"phaseType","in":"query","required":false,"schema":{"anyOf":[{"enum":["single","three"],"type":"string"},{"type":"null"}],"title":"Phasetype"}},{"name":"installStatus","in":"query","required":false,"schema":{"anyOf":[{"enum":["Installed","Faulty","Decommissioned"],"type":"string"},{"type":"null"}],"title":"Installstatus"}},{"name":"installType","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Installtype"}},{"name":"build","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Build"}},{"name":"dtCode","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Dtcode"}},{"name":"feederCode","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Feedercode"}},{"name":"zoneCode","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Zonecode"}},{"name":"nearLat","in":"query","required":false,"schema":{"anyOf":[{"type":"number"},{"type":"null"}],"description":"Centre latitude for a radius search","title":"Nearlat"},"description":"Centre latitude for a radius search"},{"name":"nearLng","in":"query","required":false,"schema":{"anyOf":[{"type":"number"},{"type":"null"}],"title":"Nearlng"}},{"name":"radiusKm","in":"query","required":false,"schema":{"type":"number","exclusiveMinimum":0,"default":2.0,"title":"Radiuskm"}},{"name":"page","in":"query","required":false,"schema":{"type":"integer","minimum":1,"default":1,"title":"Page"}},{"name":"pageSize","in":"query","required":false,"schema":{"type":"integer","maximum":500,"minimum":1,"default":50,"title":"Pagesize"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/meters/{meter_id}":{"get":{"tags":["meters"],"summary":"Get Meter","operationId":"get_meter_meters__meter_id__get","parameters":[{"name":"meter_id","in":"path","required":true,"schema":{"type":"string","title":"Meter Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/meters/{meter_id}/readings":{"get":{"tags":["consumption"],"summary":"Raw register readings","description":"Cumulative kWh/kVAh register values plus R-phase voltage. Without a range\nthe portal returns its default window (last 7 days of available data).\nData exists for June 2026 only on this instance.","operationId":"get_readings_meters__meter_id__readings_get","parameters":[{"name":"meter_id","in":"path","required":true,"schema":{"type":"string","title":"Meter Id"}},{"name":"from","in":"query","required":false,"schema":{"anyOf":[{"type":"string","pattern":"^\\d{4}-\\d{2}-\\d{2}$"},{"type":"null"}],"title":"From"}},{"name":"to","in":"query","required":false,"schema":{"anyOf":[{"type":"string","pattern":"^\\d{4}-\\d{2}-\\d{2}$"},{"type":"null"}],"title":"To"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/meters/{meter_id}/consumption/daily":{"get":{"tags":["consumption"],"summary":"kWh consumed per day","operationId":"get_daily_meters__meter_id__consumption_daily_get","parameters":[{"name":"meter_id","in":"path","required":true,"schema":{"type":"string","title":"Meter Id"}},{"name":"from","in":"query","required":false,"schema":{"anyOf":[{"type":"string","pattern":"^\\d{4}-\\d{2}-\\d{2}$"},{"type":"null"}],"title":"From"}},{"name":"to","in":"query","required":false,"schema":{"anyOf":[{"type":"string","pattern":"^\\d{4}-\\d{2}-\\d{2}$"},{"type":"null"}],"title":"To"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/transformers":{"get":{"tags":["network"],"summary":"Distribution transformers with meter counts","operationId":"list_transformers_transformers_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}}}}},"/hierarchy":{"get":{"tags":["network"],"summary":"Network tree zone > circle > ... > DT","operationId":"hierarchy_hierarchy_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}}}}},"/hierarchy/issues":{"get":{"tags":["network"],"summary":"Data repairs applied to the upstream hierarchy","operationId":"hierarchy_issues_hierarchy_issues_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}}}}}},"components":{"schemas":{"HTTPValidationError":{"properties":{"detail":{"items":{"$ref":"#/components/schemas/ValidationError"},"type":"array","title":"Detail"}},"type":"object","title":"HTTPValidationError"},"ValidationError":{"properties":{"loc":{"items":{"anyOf":[{"type":"string"},{"type":"integer"}]},"type":"array","title":"Location"},"msg":{"type":"string","title":"Message"},"type":{"type":"string","title":"Error Type"},"input":{"title":"Input"},"ctx":{"type":"object","title":"Context"}},"type":"object","required":["loc","msg","type"],"title":"ValidationError"}}}}
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Urja Meter API",
+    "version": "1.0.0",
+    "description": "Read-only API over the Urja Meter Ops portal: meters, network hierarchy, transformers and consumption readings. Meter data comes from a cached bulk export; readings are fetched live per meter."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000"
+    }
+  ],
+  "tags": [
+    {
+      "name": "meters"
+    },
+    {
+      "name": "consumption"
+    },
+    {
+      "name": "network"
+    },
+    {
+      "name": "meta"
+    }
+  ],
+  "paths": {
+    "/meters": {
+      "get": {
+        "tags": [
+          "meters"
+        ],
+        "summary": "List and filter meters",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Substring match on meter ID or serial number"
+          },
+          {
+            "name": "make",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "phaseType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "single",
+                "three"
+              ]
+            }
+          },
+          {
+            "name": "installStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Installed",
+                "Faulty",
+                "Decommissioned"
+              ]
+            }
+          },
+          {
+            "name": "installType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Whole Current",
+                "CT Operated"
+              ]
+            }
+          },
+          {
+            "name": "build",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "legacy",
+                "v2"
+              ]
+            }
+          },
+          {
+            "name": "dtCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "feederCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zoneCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nearLat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            },
+            "description": "Centre latitude for a radius search; needs nearLng"
+          },
+          {
+            "name": "nearLng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "radiusKm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 2
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Meter"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "pageSize": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "total",
+                    "page",
+                    "pageSize"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Portal returned something unexpected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Portal kept rate-limiting or failing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meters/{id}": {
+      "get": {
+        "tags": [
+          "meters"
+        ],
+        "summary": "One meter with hierarchy and location",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "J100000"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meter"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown meter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Portal returned something unexpected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Portal kept rate-limiting or failing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meters/{id}/readings": {
+      "get": {
+        "tags": [
+          "consumption"
+        ],
+        "summary": "Cumulative register readings",
+        "description": "Without a range the portal's default window is returned (last 7 days of available data). This instance only has data for June 2026.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "J100000"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive start date, YYYY-MM-DD"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive end date, YYYY-MM-DD"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "meterId": {
+                      "type": "string"
+                    },
+                    "granularity": {
+                      "type": "string",
+                      "enum": [
+                        "30min",
+                        "daily",
+                        "unknown"
+                      ]
+                    },
+                    "count": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Reading"
+                      }
+                    }
+                  },
+                  "required": [
+                    "meterId",
+                    "granularity",
+                    "count",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid date",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown meter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Portal returned something unexpected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Portal kept rate-limiting or failing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/meters/{id}/consumption/daily": {
+      "get": {
+        "tags": [
+          "consumption"
+        ],
+        "summary": "kWh consumed per calendar day",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "J100000"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive start date, YYYY-MM-DD"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive end date, YYYY-MM-DD"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "meterId": {
+                      "type": "string"
+                    },
+                    "totalKwh": {
+                      "type": "number"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "date": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "kwh": {
+                            "type": "number"
+                          },
+                          "readings": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "date",
+                          "kwh",
+                          "readings"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "meterId",
+                    "totalKwh",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid date",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown meter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Portal returned something unexpected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Portal kept rate-limiting or failing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transformers": {
+      "get": {
+        "tags": [
+          "network"
+        ],
+        "summary": "Distribution transformers with meter counts",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Transformer"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Portal returned something unexpected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Portal kept rate-limiting or failing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hierarchy": {
+      "get": {
+        "tags": [
+          "network"
+        ],
+        "summary": "Network tree: zone > circle > division > subdivision > substation > feeder > DT",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreeNode"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Portal returned something unexpected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Portal kept rate-limiting or failing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hierarchy/issues": {
+      "get": {
+        "tags": [
+          "network"
+        ],
+        "summary": "Repairs applied to the upstream hierarchy data",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Issue"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Portal returned something unexpected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Portal kept rate-limiting or failing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Liveness and cache age",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "metersCached": {
+                      "type": "integer"
+                    },
+                    "cacheAgeSeconds": {
+                      "type": "integer",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "metersCached",
+                    "cacheAgeSeconds"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/refresh": {
+      "post": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Force a re-pull of the bulk export",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "meters": {
+                      "type": "integer"
+                    },
+                    "issuesRepaired": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "meters",
+                    "issuesRepaired"
+                  ]
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Portal returned something unexpected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Portal kept rate-limiting or failing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ]
+      },
+      "HierarchyNode": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ]
+      },
+      "Meter": {
+        "type": "object",
+        "properties": {
+          "meterId": {
+            "type": "string"
+          },
+          "serialNo": {
+            "type": "string"
+          },
+          "make": {
+            "type": "string"
+          },
+          "phaseType": {
+            "type": "string"
+          },
+          "installStatus": {
+            "type": "string"
+          },
+          "installType": {
+            "type": "string"
+          },
+          "build": {
+            "type": "string"
+          },
+          "dtCode": {
+            "type": "string"
+          },
+          "hierarchy": {
+            "type": "object",
+            "properties": {
+              "zone": {
+                "$ref": "#/components/schemas/HierarchyNode"
+              },
+              "circle": {
+                "$ref": "#/components/schemas/HierarchyNode"
+              },
+              "division": {
+                "$ref": "#/components/schemas/HierarchyNode"
+              },
+              "subdivision": {
+                "$ref": "#/components/schemas/HierarchyNode"
+              },
+              "substation": {
+                "$ref": "#/components/schemas/HierarchyNode"
+              },
+              "feeder": {
+                "$ref": "#/components/schemas/HierarchyNode"
+              },
+              "dt": {
+                "$ref": "#/components/schemas/HierarchyNode"
+              }
+            },
+            "required": [
+              "zone",
+              "circle",
+              "division",
+              "subdivision",
+              "substation",
+              "feeder",
+              "dt"
+            ]
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "lng": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lng"
+            ],
+            "nullable": true
+          },
+          "distanceKm": {
+            "type": "number",
+            "description": "Only present on radius searches"
+          }
+        },
+        "required": [
+          "meterId",
+          "serialNo",
+          "make",
+          "phaseType",
+          "installStatus",
+          "installType",
+          "build",
+          "dtCode",
+          "hierarchy",
+          "location"
+        ]
+      },
+      "Reading": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Portal local time, no offset"
+          },
+          "kwh": {
+            "type": "number",
+            "nullable": true
+          },
+          "kvah": {
+            "type": "number",
+            "nullable": true
+          },
+          "voltR": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "timestamp",
+          "kwh",
+          "kvah",
+          "voltR"
+        ]
+      },
+      "Transformer": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "feederCode": {
+            "type": "string"
+          },
+          "capacityKva": {
+            "type": "number"
+          },
+          "meterCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "feederCode",
+          "capacityKva",
+          "meterCount"
+        ]
+      },
+      "TreeNode": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "meterCount": {
+            "type": "integer"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TreeNode"
+            }
+          }
+        },
+        "required": [
+          "level",
+          "code",
+          "name",
+          "meterCount",
+          "children"
+        ]
+      },
+      "Issue": {
+        "type": "object",
+        "properties": {
+          "meterId": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "fix": {
+            "type": "string",
+            "enum": [
+              "code_from_name",
+              "name_from_code",
+              "feeder_from_dt",
+              "dt_name_alias"
+            ]
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "meterId",
+          "level",
+          "fix",
+          "value"
+        ]
+      }
+    }
+  }
+}
